@@ -176,6 +176,31 @@ class CellRangerATACConfig(BaseStepConfig):
         gt=0,
         description="Memory (GB) for create_atac_anndata (SnapATAC2 fragment sorting requires more memory)"
     )
+    anndata_runtime_minutes: int = Field(
+        default=120,
+        gt=0,
+        description="Maximum runtime in minutes for create_atac_anndata (fragment sorting on large files can be slow)"
+    )
+    aggr_runtime_minutes: int = Field(
+        default=240,
+        gt=0,
+        description="Maximum runtime in minutes for cellranger_atac_aggr"
+    )
+    batch_aggr_threads: int = Field(
+        default=1,
+        ge=1,
+        description="CPU threads for aggregate_atac_batch"
+    )
+    batch_aggr_mem_gb: int = Field(
+        default=64,
+        gt=0,
+        description="Memory (GB) for aggregate_atac_batch (loading all per-capture ATAC objects)"
+    )
+    batch_aggr_runtime_minutes: int = Field(
+        default=60,
+        gt=0,
+        description="Maximum runtime in minutes for aggregate_atac_batch"
+    )
     directories: DirectoryConfig = Field(
         default_factory=lambda: DirectoryConfig(
             LOGS_DIR="00_LOGS",

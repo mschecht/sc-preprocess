@@ -17,9 +17,11 @@ capture_id = snakemake.params.capture
 output_h5ad = snakemake.output.h5ad
 output_snap_h5ad = snakemake.output.snap_h5ad
 log_file = snakemake.log[0]
+tmp_dir = snakemake.resources.tmpdir
+n_threads = snakemake.threads
 
 # Redirect output to log
-sys.stdout = open(log_file, 'w')
+sys.stdout = open(log_file, 'w', buffering=1)
 sys.stderr = sys.stdout
 
 
@@ -64,9 +66,11 @@ def get_chrom_sizes_from_reference(fragments_path):
 
 
 try:
+    os.makedirs(os.path.dirname(output_h5ad), exist_ok=True)
+
     # ---- Step 1: Read peak matrix (Cell Ranger filtered cells x peaks) ----
     print(f"Reading Cell Ranger peak matrix from: {peak_matrix_path}")
-    adata = sc.read_10x_h5(peak_matrix_path)
+    adata = sc.read_10x_h5(peak_matrix_path, gex_only=False)
     # Cell Ranger ATAC h5 stores peaks in var; rename for clarity
     adata.var_names_make_unique()
     print(f"✓ Loaded peak matrix: {adata.n_obs} cells × {adata.n_vars} peaks")
@@ -80,13 +84,15 @@ try:
     # Sort fragments by barcode for efficient import
     sorted_fragments = fragments_path.replace('.tsv.gz', '.sorted_by_barcode.tsv.gz')
 
-    if not os.path.exists(sorted_fragments):
+    if not os.path.exists(sorted_fragments) or os.path.getsize(sorted_fragments) == 0:
         print(f"Sorting fragments by barcode for efficient import...")
-        temp_dir = os.path.dirname(fragments_path)
+        mem_gb = snakemake.resources.get("mem_mb", 32768) // 1024
+        sort_mem = max(1, mem_gb // 2)
         sort_cmd = f"""
         zcat {fragments_path} | \
-        awk 'NR==1 {{print; next}} {{print | "sort -k4,4V -k1,1V -k2,2n -T {temp_dir}"}}' | \
-        bgzip > {sorted_fragments}
+        grep -v '^#' | \
+        sort -k4,4 -k1,1 -k2,2n -T {tmp_dir} --parallel={n_threads} -S {sort_mem}G | \
+        bgzip --threads {n_threads} > {sorted_fragments}
         """
         subprocess.run(sort_cmd, shell=True, check=True, executable='/bin/bash')
         print(f"✓ Fragments sorted and saved to: {sorted_fragments}")

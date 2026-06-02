@@ -66,6 +66,7 @@ if config.get("cellranger_atac"):
         threads: config["cellranger_atac"].get("anndata_threads", 1)
         resources:
             mem_mb = config["cellranger_atac"].get("anndata_mem_gb", 32) * 1024,
+            runtime = config["cellranger_atac"].get("anndata_runtime_minutes", 120),
             tmpdir = RESOURCES.get("tmpdir") or gettempdir()
         log:
             os.path.join(LOGS_DIR, "{batch}_{capture}_atac_anndata.log")
