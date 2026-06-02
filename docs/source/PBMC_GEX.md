@@ -83,8 +83,21 @@ cellranger_gex:
   create-bam: true
   threads: 10
   mem_gb: 64
-  anndata_threads: 1
-  anndata_mem_gb: 32
+  # cellranger_gex_aggr
+  aggr:
+    threads: 16
+    mem_gb: 64
+    runtime_minutes: 240
+  # create_gex_anndata
+  anndata:
+    threads: 16
+    mem_gb: 32
+    runtime_minutes: 120
+  # aggregate_gex_batch
+  batch_aggregation:
+    threads: 16
+    mem_gb: 32
+    runtime_minutes: 120
   directories:
     LOGS_DIR: 00_LOGS
 doublet_detection:

@@ -33,9 +33,10 @@ if config.get("cellranger_gex"):
         params:
             batch = "{batch}",
             capture = "{capture}"
-        threads: config["cellranger_gex"].get("anndata_threads", 1)
+        threads: config["cellranger_gex"].get("anndata", {}).get("threads", 16)
         resources:
-            mem_mb = config["cellranger_gex"].get("anndata_mem_gb", 16) * 1024,
+            mem_mb = config["cellranger_gex"].get("anndata", {}).get("mem_gb", 32) * 1024,
+            runtime = config["cellranger_gex"].get("anndata", {}).get("runtime_minutes", 120),
             tmpdir = RESOURCES.get("tmpdir") or gettempdir()
         log:
             os.path.join(LOGS_DIR, "{batch}_{capture}_gex_anndata.log")
@@ -63,10 +64,10 @@ if config.get("cellranger_atac"):
         params:
             batch = "{batch}",
             capture = "{capture}"
-        threads: config["cellranger_atac"].get("anndata_threads", 1)
+        threads: config["cellranger_atac"].get("anndata", {}).get("threads", 16)
         resources:
-            mem_mb = config["cellranger_atac"].get("anndata_mem_gb", 32) * 1024,
-            runtime = config["cellranger_atac"].get("anndata_runtime_minutes", 120),
+            mem_mb = config["cellranger_atac"].get("anndata", {}).get("mem_gb", 32) * 1024,
+            runtime = config["cellranger_atac"].get("anndata", {}).get("runtime_minutes", 120),
             tmpdir = RESOURCES.get("tmpdir") or gettempdir()
         log:
             os.path.join(LOGS_DIR, "{batch}_{capture}_atac_anndata.log")
@@ -77,6 +78,38 @@ if config.get("cellranger_atac"):
 # ============================================================================
 # ARC MUDATA CREATION
 # ============================================================================
+
+if config.get("cellranger_multi"):
+    MULTI_COUNT_DIR = OUTPUT_DIRS["cellrangermulti_count_dir"]
+
+    rule create_multi_mudata:
+        """Create MuData object from Cell Ranger multi output (per-capture).
+
+        Handles both non-multiplexed runs (outs/count/) and multiplexed Flex runs
+        (outs/per_sample_outs/). VDJ-T and VDJ-B directories are read if present.
+        """
+        input:
+            h5 = os.path.join(MULTI_COUNT_DIR, "{batch}_{capture}", "outs", "count", "filtered_feature_bc_matrix.h5"),
+            count_done = os.path.join(LOGS_DIR, "{batch}_{capture}_multi_count.done")
+        output:
+            h5mu = os.path.join(ANNDATA_DIR, "{batch}_{capture}.h5mu"),
+            done = touch(os.path.join(LOGS_DIR, "{batch}_{capture}_multi_mudata.done"))
+        params:
+            batch = "{batch}",
+            capture = "{capture}",
+            outs_dir = os.path.join(MULTI_COUNT_DIR, "{batch}_{capture}", "outs"),
+            vdj_t_dir = os.path.join(MULTI_COUNT_DIR, "{batch}_{capture}", "outs", "vdj_t"),
+            vdj_b_dir = os.path.join(MULTI_COUNT_DIR, "{batch}_{capture}", "outs", "vdj_b")
+        threads: config["cellranger_multi"].get("anndata", {}).get("threads", 16)
+        resources:
+            mem_mb = config["cellranger_multi"].get("anndata", {}).get("mem_gb", 32) * 1024,
+            runtime = config["cellranger_multi"].get("anndata", {}).get("runtime_minutes", 120),
+            tmpdir = RESOURCES.get("tmpdir") or gettempdir()
+        log:
+            os.path.join(LOGS_DIR, "{batch}_{capture}_multi_mudata.log")
+        script:
+            "../scripts/create_multi_mudata.py"
+
 
 if config.get("cellranger_arc"):
     ARC_COUNT_DIR = OUTPUT_DIRS["cellrangerarc_count_dir"]
@@ -94,9 +127,10 @@ if config.get("cellranger_arc"):
             batch = "{batch}",
             capture = "{capture}",
             mtx_dir = os.path.join(ARC_COUNT_DIR, "{batch}_{capture}", "outs", "filtered_feature_bc_matrix")
-        threads: config["cellranger_arc"].get("anndata_threads", 1)
+        threads: config["cellranger_arc"].get("anndata", {}).get("threads", 16)
         resources:
-            mem_mb = config["cellranger_arc"].get("anndata_mem_gb", 16) * 1024,
+            mem_mb = config["cellranger_arc"].get("anndata", {}).get("mem_gb", 32) * 1024,
+            runtime = config["cellranger_arc"].get("anndata", {}).get("runtime_minutes", 120),
             tmpdir = RESOURCES.get("tmpdir") or gettempdir()
         log:
             os.path.join(LOGS_DIR, "{batch}_{capture}_arc_mudata.log")

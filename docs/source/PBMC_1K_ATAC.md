@@ -96,8 +96,21 @@ cellranger_atac:
     mempercore: null     # SLURM users: leave null — memory is requested directly via --mem=__MRO_MEM_GB__G
     maxjobs: 64          # max concurrent cluster subjobs
     jobinterval: null    # delay between submissions in ms; increase if cluster rate-limits
-  anndata_threads: 1
-  anndata_mem_gb: 32  # SnapATAC2 fragment sorting requires extra memory
+  # cellranger_atac_aggr
+  aggr:
+    threads: 16
+    mem_gb: 64
+    runtime_minutes: 240
+  # create_atac_anndata (includes fragment sort — can take 10–30 min on real data)
+  anndata:
+    threads: 16
+    mem_gb: 32
+    runtime_minutes: 120
+  # aggregate_atac_batch
+  batch_aggregation:
+    threads: 16
+    mem_gb: 32
+    runtime_minutes: 120
 
 doublet_detection:
   enabled: True
@@ -203,7 +216,7 @@ sc-preprocess run --config-file pipeline_config.yaml --cores 1 --dag | dot -Tpng
 Here we will break down the meaning of each rule so you can keep track of what's going on. If you want more detail please refer to the [Pipeline Rules Reference](pipeline_rules.md).
 
 * **cellranger_atac_count**: Runs the command [cellranger-atac count](https://www.10xgenomics.com/support/software/cell-ranger-atac/latest/analysis/running-pipelines/command-line-arguments#count) per capture, aligning ATAC reads to the reference genome and producing a peak-barcode matrix.
-* **create_atac_anndata**: Converts data from the Cell Ranger ATAC output to a per-capture [AnnData object](https://anndata.readthedocs.io/en/latest/) (`.h5ad`), adding traceability metadata (`batch_id`, `capture_id`, `cell_id`).
+* **create_atac_anndata**: Converts Cell Ranger ATAC output to a per-capture [AnnData object](https://anndata.readthedocs.io/en/latest/) (`.h5ad`), adding traceability metadata (`batch_id`, `capture_id`, `cell_id`). Before importing fragments into SnapATAC2, the pipeline sorts `fragments.tsv.gz` by barcode and caches the result as `fragments.sorted_by_barcode.tsv.gz` next to the original file. **This sort is the most resource-intensive step in the pipeline**: on real data a fragments file is typically 2–5 GB and sorting it can take 10–30 minutes and require 16–32 GB of RAM. Use `anndata.mem_gb` and `anndata.runtime_minutes` in the config to size the job accordingly. The sorted file is cached — if you re-run the pipeline it will be reused automatically.
 * **cellranger_atac_aggr**: Runs [cellranger-atac aggr](https://www.10xgenomics.com/support/software/cell-ranger-atac/latest/analysis/running-pipelines/command-line-arguments#aggr) which aggregates all per-capture Cell Ranger ATAC outputs within a batch into a single normalized count matrix.
 * **aggregate_atac_batch**: Merges all per-capture AnnData objects into a single batch-level `.h5ad` file, verifying `cell_id` uniqueness across captures.
 * **run_scrublet**: Runs Scrublet doublet detection on each per-capture AnnData object, adding doublet scores and predictions to cell metadata.
@@ -322,8 +335,21 @@ cellranger_atac:
     mempercore: null     # SLURM users: leave null — memory is requested directly via --mem=__MRO_MEM_GB__G
     maxjobs: 64          # max concurrent cluster subjobs
     jobinterval: null    # delay between submissions in ms; increase if cluster rate-limits
-  anndata_threads: 1
-  anndata_mem_gb: 32  # SnapATAC2 fragment sorting requires extra memory
+  # cellranger_atac_aggr
+  aggr:
+    threads: 16
+    mem_gb: 64
+    runtime_minutes: 240
+  # create_atac_anndata (includes fragment sort — can take 10–30 min on real data)
+  anndata:
+    threads: 16
+    mem_gb: 32
+    runtime_minutes: 120
+  # aggregate_atac_batch
+  batch_aggregation:
+    threads: 16
+    mem_gb: 32
+    runtime_minutes: 120
 ```
 
 Running `sc-processes` with the files above will look like this across your HPC: 
@@ -331,7 +357,8 @@ Running `sc-processes` with the files above will look like this across your HPC:
 ```
 jobs: 10
   └─ job 1: cellranger_atac_count (batch1_L001) → 1 node, 10 CPUs, 64 GB, 720 min
-  └─ job 2: create_atac_anndata   (batch1_L001) → 1 node,  1 CPU,  32 GB, 720 min
+  └─ job 2: create_atac_anndata   (batch1_L001) → 1 node, 16 CPUs, 32 GB, 120 min  ← includes fragment sort
+  └─ job 3: aggregate_atac_batch  (batch1)      → 1 node, 16 CPUs, 32 GB, 120 min
   └─ ...up to 10 running at once
 ```
 
@@ -369,8 +396,21 @@ cellranger_atac:
     mempercore: null     # SLURM users: leave null — memory is requested directly via --mem=__MRO_MEM_GB__G
     maxjobs: 64          # max concurrent cluster subjobs
     jobinterval: null    # delay between submissions in ms; increase if cluster rate-limits
-  anndata_threads: 1
-  anndata_mem_gb: 32  # SnapATAC2 fragment sorting requires extra memory
+  # cellranger_atac_aggr
+  aggr:
+    threads: 16
+    mem_gb: 64
+    runtime_minutes: 240
+  # create_atac_anndata (includes fragment sort — can take 10–30 min on real data)
+  anndata:
+    threads: 16
+    mem_gb: 32
+    runtime_minutes: 120
+  # aggregate_atac_batch
+  batch_aggregation:
+    threads: 16
+    mem_gb: 32
+    runtime_minutes: 120
 ```
 
 With `cluster-mode` enabled in the files above, running `sc-processes` will look like this across your HPC: 
@@ -381,7 +421,7 @@ jobs: 10
                 └─ CR sub-job 1 → separate SLURM job (managed by Cell Ranger, not Snakemake)
                 └─ CR sub-job 2 → separate SLURM job
                 └─ ... up to maxjobs: 64
-  └─ job 2: create_atac_anndata   (batch1_L001) → 1 node,  1 CPU,  32 GB
+  └─ job 2: create_atac_anndata   (batch1_L001) → 1 node, 16 CPUs, 32 GB, 120 min  ← includes fragment sort
 ```
 
 

@@ -3,6 +3,7 @@
 import os
 import sys
 from pathlib import Path
+from tempfile import gettempdir
 import pandas as pd
 
 # Import utilities
@@ -25,6 +26,8 @@ def get_captures_for_batch(batch_id, modality):
         libraries_file = config["cellranger_atac"]["libraries"]
     elif modality == "arc" and config.get("cellranger_arc"):
         libraries_file = config["cellranger_arc"]["libraries"]
+    elif modality == "multi" and config.get("cellranger_multi"):
+        libraries_file = config["cellranger_multi"]["libraries"]
     else:
         return []
 
@@ -67,6 +70,11 @@ if config.get("cellranger_gex"):
         params:
             batch = "{batch}",
             modality = "gex"
+        threads: config["cellranger_gex"].get("batch_aggregation", {}).get("threads", 16)
+        resources:
+            mem_mb = config["cellranger_gex"].get("batch_aggregation", {}).get("mem_gb", 32) * 1024,
+            runtime = config["cellranger_gex"].get("batch_aggregation", {}).get("runtime_minutes", 120),
+            tmpdir = RESOURCES.get("tmpdir") or gettempdir()
         log:
             os.path.join(LOGS_DIR, "{batch}_gex_batch_aggregation.log")
         script:
@@ -107,6 +115,11 @@ if config.get("cellranger_atac"):
         params:
             batch = "{batch}",
             modality = "atac"
+        threads: config["cellranger_atac"].get("batch_aggregation", {}).get("threads", 16)
+        resources:
+            mem_mb = config["cellranger_atac"].get("batch_aggregation", {}).get("mem_gb", 32) * 1024,
+            runtime = config["cellranger_atac"].get("batch_aggregation", {}).get("runtime_minutes", 120),
+            tmpdir = RESOURCES.get("tmpdir") or gettempdir()
         log:
             os.path.join(LOGS_DIR, "{batch}_atac_batch_aggregation.log")
         script:
@@ -147,8 +160,57 @@ if config.get("cellranger_arc"):
         params:
             batch = "{batch}",
             modality = "arc"
+        threads: config["cellranger_arc"].get("batch_aggregation", {}).get("threads", 16)
+        resources:
+            mem_mb = config["cellranger_arc"].get("batch_aggregation", {}).get("mem_gb", 32) * 1024,
+            runtime = config["cellranger_arc"].get("batch_aggregation", {}).get("runtime_minutes", 120),
+            tmpdir = RESOURCES.get("tmpdir") or gettempdir()
         log:
             os.path.join(LOGS_DIR, "{batch}_arc_batch_aggregation.log")
+        script:
+            "../scripts/aggregate_batch.py"
+
+
+# ============================================================================
+# Multi Batch Aggregation
+# ============================================================================
+
+if config.get("cellranger_multi"):
+
+    libraries_file = config["cellranger_multi"]["libraries"]
+    multi_df = pd.read_csv(libraries_file, sep="\t")
+    MULTI_BATCHES = multi_df['batch'].unique().tolist()
+
+    custom_logger.info(f"Batch aggregation: Found {len(MULTI_BATCHES)} multi batch(es)")
+
+    def get_multi_percapture_objects(wildcards):
+        """Get all per-capture .h5mu files for a batch."""
+        captures = get_captures_for_batch(wildcards.batch, "multi")
+        return [os.path.join(ANNDATA_DIR, f"{wildcards.batch}_{cap}.h5mu") for cap in captures]
+
+    def get_multi_percapture_done(wildcards):
+        """Get all per-capture done flags for a batch."""
+        captures = get_captures_for_batch(wildcards.batch, "multi")
+        return [os.path.join(LOGS_DIR, f"{wildcards.batch}_{cap}_multi_mudata.done") for cap in captures]
+
+    rule aggregate_multi_batch:
+        """Aggregate per-capture multi objects into batch-level MuData object."""
+        input:
+            h5mus = get_multi_percapture_objects,
+            done_flags = get_multi_percapture_done
+        output:
+            h5mu = os.path.join(BATCH_DIR, "{batch}_multi.h5mu"),
+            done = touch(os.path.join(LOGS_DIR, "{batch}_multi_batch_aggregation.done"))
+        params:
+            batch = "{batch}",
+            modality = "multi"
+        threads: config["cellranger_multi"].get("batch_aggregation", {}).get("threads", 16)
+        resources:
+            mem_mb = config["cellranger_multi"].get("batch_aggregation", {}).get("mem_gb", 32) * 1024,
+            runtime = config["cellranger_multi"].get("batch_aggregation", {}).get("runtime_minutes", 120),
+            tmpdir = RESOURCES.get("tmpdir") or gettempdir()
+        log:
+            os.path.join(LOGS_DIR, "{batch}_multi_batch_aggregation.log")
         script:
             "../scripts/aggregate_batch.py"
 
@@ -227,5 +289,27 @@ if config.get("cellranger_arc"):
             doublet_dir = DOUBLET_DIR
         log:
             os.path.join(LOGS_DIR, "{batch}_arc_enrichment.log")
+        script:
+            "../scripts/merge_metadata.py"
+
+
+if config.get("cellranger_multi"):
+
+    rule enrich_multi_metadata:
+        """Enrich multi batch object with analysis metadata (demux, doublet, annotation)."""
+        input:
+            batch_object = os.path.join(BATCH_DIR, "{batch}_multi.h5mu"),
+            done_flag = os.path.join(LOGS_DIR, "{batch}_multi_batch_aggregation.done")
+        output:
+            enriched_object = os.path.join(FINAL_DIR, "{batch}_multi.h5mu"),
+            obs_table = os.path.join(FINAL_DIR, "{batch}_multi_obs.tsv.gz"),
+            done = touch(os.path.join(LOGS_DIR, "{batch}_multi_enrichment.done"))
+        params:
+            batch = "{batch}",
+            modality = "multi",
+            demux_dir = DEMUX_DIR,
+            doublet_dir = DOUBLET_DIR
+        log:
+            os.path.join(LOGS_DIR, "{batch}_multi_enrichment.log")
         script:
             "../scripts/merge_metadata.py"

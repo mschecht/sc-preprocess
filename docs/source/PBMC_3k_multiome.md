@@ -80,13 +80,26 @@ cellranger_arc:
   reference: /path/to/refdata-cellranger-arc-GRCh38-2024-A # <- add the correct path!
   libraries: libraries_list.tsv
   normalize: none
-  anndata_threads: 1
-  anndata_mem_gb: 16
   directories:
     LOGS_DIR: 00_LOGS
   threads: 10
   mem_gb: 64
   runtime_minutes: 720  # max SLURM job runtime in minutes (default: 720 = 12 hours)
+  # cellranger_arc_aggr
+  aggr:
+    threads: 16
+    mem_gb: 64
+    runtime_minutes: 240
+  # create_arc_mudata
+  anndata:
+    threads: 16
+    mem_gb: 32
+    runtime_minutes: 120
+  # aggregate_arc_batch
+  batch_aggregation:
+    threads: 16
+    mem_gb: 32
+    runtime_minutes: 120
 doublet_detection:
   enabled: true
   method: scrublet

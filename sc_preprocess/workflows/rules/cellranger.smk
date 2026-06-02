@@ -136,13 +136,18 @@ if config.get("cellranger_gex"):
         params:
             outdir = GEX_AGGR_DIR,
             normalize = GEX_NORMALIZE,
-        threads: config["cellranger_gex"].get("threads", 10)
+        threads: config["cellranger_gex"].get("aggr", {}).get("threads", 16)
         resources:
-            mem_mb = config["cellranger_gex"].get("mem_gb", 64) * 1024, # NOTE: SLURM resources uses M  B
+            mem_mb = config["cellranger_gex"].get("aggr", {}).get("mem_gb", 64) * 1024,
+            runtime = config["cellranger_gex"].get("aggr", {}).get("runtime_minutes", 240),
             tmpdir = RESOURCES.get("tmpdir") or gettempdir()
         log:
             os.path.join(GEX_LOGS_DIR, "{batch}_gex_aggr.log")
         run:
+            lock_file = os.path.join(wildcards.batch, "_lock")
+            if os.path.exists(lock_file):
+                os.remove(lock_file)
+
             # Create aggregation CSV
             captures = gex_batch_to_samples[wildcards.batch]
             aggr_data = []
@@ -292,13 +297,18 @@ if config.get("cellranger_atac"):
         params:
             outdir = ATAC_AGGR_DIR,
             normalize = ATAC_NORMALIZE,
-        threads: 8
+        threads: config["cellranger_atac"].get("aggr", {}).get("threads", 16)
         resources:
-            mem_mb = config["cellranger_atac"].get("mem_gb", 64) * 1024,
+            mem_mb = config["cellranger_atac"].get("aggr", {}).get("mem_gb", 64) * 1024,
+            runtime = config["cellranger_atac"].get("aggr", {}).get("runtime_minutes", 240),
             tmpdir = RESOURCES.get("tmpdir") or gettempdir()
         log:
             os.path.join(ATAC_LOGS_DIR, "{batch}_atac_aggr.log")
         run:
+            lock_file = os.path.join(wildcards.batch, "_lock")
+            if os.path.exists(lock_file):
+                os.remove(lock_file)
+
             # Create aggregation CSV
             captures = atac_batch_to_samples[wildcards.batch]
             aggr_data = []
@@ -452,13 +462,18 @@ if config.get("cellranger_arc"):
             outdir = ARC_AGGR_DIR,
             normalize = ARC_NORMALIZE,
             reference = ARC_REFERENCE
-        threads: 8
+        threads: config["cellranger_arc"].get("aggr", {}).get("threads", 16)
         resources:
-            mem_mb = config["cellranger_arc"].get("mem_gb", 64) * 1024,
+            mem_mb = config["cellranger_arc"].get("aggr", {}).get("mem_gb", 64) * 1024,
+            runtime = config["cellranger_arc"].get("aggr", {}).get("runtime_minutes", 240),
             tmpdir = RESOURCES.get("tmpdir") or gettempdir()
         log:
             os.path.join(ARC_LOGS_DIR, "{batch}_arc_aggr.log")
         run:
+            lock_file = os.path.join(wildcards.batch, "_lock")
+            if os.path.exists(lock_file):
+                os.remove(lock_file)
+
             # Create aggregation CSV for cellranger-arc aggr
             captures = arc_batch_to_captures[wildcards.batch]
             aggr_data = []
@@ -511,3 +526,154 @@ if config.get("cellranger_arc"):
                     shutil.move(wildcards.batch, final_path)
             else:
                 u.custom_logger.info(f"Batch {wildcards.batch} has only one capture ({captures[0]}). Skipping cellranger-arc aggr step.")
+
+
+# ============================================================================
+# CELL RANGER MULTI
+# ============================================================================
+
+if config.get("cellranger_multi"):
+    multi_cfg = parse_cellranger_config(config, "cellranger_multi", OUTPUT_DIRS, has_chemistry=False)
+
+    MULTI_LIBRARIES = multi_cfg["libraries"]
+    MULTI_LOGS_DIR = multi_cfg["logs_dir"]
+    MULTI_COUNT_DIR = multi_cfg["count_dir"]
+    MULTI_AGGR_DIR = multi_cfg["aggr_dir"]
+
+    # Parse libraries file (same format as ARC: batch, capture, CSV)
+    multi_df = u.sanity_check_libraries_list_tsv(
+        MULTI_LIBRARIES,
+        expected_columns={"batch", "capture", "CSV"},
+        path_column="CSV",
+        file_extension=".csv"
+    )
+
+    multi_captures = multi_df["capture"].unique().tolist()
+    multi_batch_to_captures = {str(k): v for k, v in multi_df.groupby("batch")["capture"].apply(list).to_dict().items()}
+
+    u.custom_logger.info(f"Cell Ranger multi: Found {len(multi_captures)} capture(s) across {len(multi_batch_to_captures)} batch(es)")
+
+    _multi_cm = config["cellranger_multi"].get("cluster-mode") or {}
+    MULTI_CLUSTER_JOBMODE     = _multi_cm.get("jobmode") if _multi_cm.get("enabled") else None
+    MULTI_CLUSTER_MEMPERCORE  = _multi_cm.get("mempercore") if _multi_cm.get("enabled") else None
+    MULTI_CLUSTER_MAXJOBS     = _multi_cm.get("maxjobs") if _multi_cm.get("enabled") else None
+    MULTI_CLUSTER_JOBINTERVAL = _multi_cm.get("jobinterval") if _multi_cm.get("enabled") else None
+
+
+    rule cellranger_multi_count:
+        """Run Cell Ranger multi for a single capture (5' immune profiling or Flex).
+
+        The multi config CSV (user-supplied per capture) declares all library types,
+        references, and probe sets. Supports GEX + VDJ (TCR/BCR) + Feature Barcoding
+        and Flex (Fixed RNA Profiling) in the same rule.
+        """
+        input:
+            libraries_csv = lambda wc: multi_df[multi_df["capture"] == wc.capture]["CSV"].iloc[0]
+        output:
+            h5 = os.path.join(MULTI_COUNT_DIR, "{batch}_{capture}", "outs", "count", "filtered_feature_bc_matrix.h5"),
+            summary = os.path.join(MULTI_COUNT_DIR, "{batch}_{capture}", "outs", "web_summary.html"),
+            done = touch(os.path.join(MULTI_LOGS_DIR, "{batch}_{capture}_multi_count.done"))
+        params:
+            outdir      = MULTI_COUNT_DIR,
+            jobmode     = MULTI_CLUSTER_JOBMODE,
+            mempercore  = MULTI_CLUSTER_MEMPERCORE,
+            maxjobs     = MULTI_CLUSTER_MAXJOBS,
+            jobinterval = MULTI_CLUSTER_JOBINTERVAL
+        threads: config["cellranger_multi"].get("threads", 10)
+        resources:
+            mem_mb = config["cellranger_multi"].get("mem_gb", 64) * 1024,
+            runtime = config["cellranger_multi"].get("runtime_minutes", 720),
+            tmpdir = RESOURCES.get("tmpdir") or gettempdir()
+        log:
+            os.path.join(MULTI_LOGS_DIR, "{batch}_{capture}_multi_count.log")
+        run:
+            output_id = f"{wildcards.batch}_{wildcards.capture}"
+
+            # Remove stale _lock file so Cell Ranger multi can resume a partial run
+            lock_file = os.path.join(output_id, "_lock")
+            if os.path.exists(lock_file):
+                os.remove(lock_file)
+
+            if params.jobmode and params.jobmode != "local":
+                cluster_flags = f"--jobmode={params.jobmode}"
+                if params.mempercore:
+                    cluster_flags += f" \\\n                    --mempercore={params.mempercore}"
+                if params.maxjobs:
+                    cluster_flags += f" \\\n                    --maxjobs={params.maxjobs}"
+                if params.jobinterval:
+                    cluster_flags += f" \\\n                    --jobinterval={params.jobinterval}"
+            else:
+                cluster_flags = f"--localcores={threads} \\\n                    --localmem={resources.mem_mb // 1024}"
+
+            shell(
+                f"""
+                cellranger multi \\
+                    --id={output_id} \\
+                    --csv={input.libraries_csv} \\
+                    {cluster_flags} \\
+                    2>&1 > {log}
+                """
+            )
+            # Move output to final location
+            if os.path.exists(output_id):
+                final_path = os.path.join(params.outdir, output_id)
+                if os.path.exists(final_path):
+                    shutil.rmtree(final_path)
+                shutil.move(output_id, final_path)
+
+
+    rule cellranger_multi_aggr:
+        """Aggregate GEX outputs from multiple multi captures using cellranger aggr."""
+        input:
+            captures = lambda wc: expand(
+                os.path.join(MULTI_COUNT_DIR, "{batch}_{capture}", "outs", "count", "filtered_feature_bc_matrix.h5"),
+                batch=wc.batch,
+                capture=multi_batch_to_captures[wc.batch]
+            )
+        output:
+            done = touch(os.path.join(MULTI_LOGS_DIR, "{batch}_multi_aggr.done")),
+            csv = os.path.join(MULTI_AGGR_DIR, "{batch}_aggregation.csv")
+        params:
+            outdir = MULTI_AGGR_DIR
+        threads: config["cellranger_multi"].get("aggr", {}).get("threads", 16)
+        resources:
+            mem_mb = config["cellranger_multi"].get("aggr", {}).get("mem_gb", 64) * 1024,
+            runtime = config["cellranger_multi"].get("aggr", {}).get("runtime_minutes", 240),
+            tmpdir = RESOURCES.get("tmpdir") or gettempdir()
+        log:
+            os.path.join(MULTI_LOGS_DIR, "{batch}_multi_aggr.log")
+        run:
+            lock_file = os.path.join(wildcards.batch, "_lock")
+            if os.path.exists(lock_file):
+                os.remove(lock_file)
+
+            captures = multi_batch_to_captures[wildcards.batch]
+            aggr_data = []
+            for capture in captures:
+                molecule_h5 = os.path.join(
+                    MULTI_COUNT_DIR,
+                    f"{wildcards.batch}_{capture}",
+                    "outs",
+                    "count",
+                    "molecule_info.h5"
+                )
+                aggr_data.append({"sample_id": f"{wildcards.batch}_{capture}", "molecule_h5": molecule_h5})
+
+            pd.DataFrame(aggr_data).to_csv(output.csv, index=False)
+
+            if len(captures) > 1:
+                shell(
+                    f"""
+                    cellranger aggr \\
+                        --id={wildcards.batch} \\
+                        --csv={output.csv} \\
+                        2>&1 > {log}
+                    """
+                )
+                if os.path.exists(wildcards.batch):
+                    final_path = os.path.join(params.outdir, wildcards.batch)
+                    if os.path.exists(final_path):
+                        shutil.rmtree(final_path)
+                    shutil.move(wildcards.batch, final_path)
+            else:
+                u.custom_logger.info(f"Batch {wildcards.batch} has only one capture ({captures[0]}). Skipping cellranger aggr step.")

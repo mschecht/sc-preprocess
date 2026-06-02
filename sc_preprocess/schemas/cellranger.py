@@ -5,6 +5,36 @@ from pydantic import BaseModel, Field, field_validator
 from .base import BaseStepConfig, DirectoryConfig, ToolMeta
 
 
+class AnndataConfig(BaseModel):
+    """Resources for the create_{modality}_anndata rule."""
+    threads: int = Field(default=16, ge=1, description="CPU threads")
+    mem_gb: int = Field(default=32, gt=0, description="Memory (GB)")
+    runtime_minutes: int = Field(default=120, gt=0, description="Wall-clock limit (minutes)")
+
+    class Config:
+        extra = "forbid"
+
+
+class AggrConfig(BaseModel):
+    """Resources for the cellranger_{modality}_aggr rule."""
+    threads: int = Field(default=16, ge=1, description="CPU threads")
+    mem_gb: int = Field(default=64, gt=0, description="Memory (GB)")
+    runtime_minutes: int = Field(default=240, gt=0, description="Wall-clock limit (minutes)")
+
+    class Config:
+        extra = "forbid"
+
+
+class BatchAggregationConfig(BaseModel):
+    """Resources for the aggregate_{modality}_batch rule."""
+    threads: int = Field(default=16, ge=1, description="CPU threads")
+    mem_gb: int = Field(default=32, gt=0, description="Memory (GB)")
+    runtime_minutes: int = Field(default=120, gt=0, description="Wall-clock limit (minutes)")
+
+    class Config:
+        extra = "forbid"
+
+
 class ClusterModeConfig(BaseModel):
     """Cell Ranger cluster mode — submits compute jobs via a cluster scheduler."""
 
@@ -97,16 +127,9 @@ class CellRangerGEXConfig(BaseStepConfig):
         description="Cell Ranger cluster mode — see https://www.10xgenomics.com/support/software/cell-ranger/latest/advanced/cr-cluster-mode"
     )
 
-    anndata_threads: int = Field(
-        default=1,
-        ge=1,
-        description="CPU threads for create_gex_anndata"
-    )
-    anndata_mem_gb: int = Field(
-        default=16,
-        gt=0,
-        description="Memory (GB) for create_gex_anndata"
-    )
+    anndata: AnndataConfig = Field(default_factory=AnndataConfig)
+    aggr: AggrConfig = Field(default_factory=AggrConfig)
+    batch_aggregation: BatchAggregationConfig = Field(default_factory=BatchAggregationConfig)
     directories: DirectoryConfig = Field(
         default_factory=lambda: DirectoryConfig(
             LOGS_DIR="00_LOGS",
@@ -166,41 +189,9 @@ class CellRangerATACConfig(BaseStepConfig):
         description="Cell Ranger cluster mode — see https://www.10xgenomics.com/support/software/cell-ranger-atac/latest/advanced/cluster-mode"
     )
 
-    anndata_threads: int = Field(
-        default=1,
-        ge=1,
-        description="CPU threads for create_atac_anndata"
-    )
-    anndata_mem_gb: int = Field(
-        default=32,
-        gt=0,
-        description="Memory (GB) for create_atac_anndata (SnapATAC2 fragment sorting requires more memory)"
-    )
-    anndata_runtime_minutes: int = Field(
-        default=120,
-        gt=0,
-        description="Maximum runtime in minutes for create_atac_anndata (fragment sorting on large files can be slow)"
-    )
-    aggr_runtime_minutes: int = Field(
-        default=240,
-        gt=0,
-        description="Maximum runtime in minutes for cellranger_atac_aggr"
-    )
-    batch_aggr_threads: int = Field(
-        default=1,
-        ge=1,
-        description="CPU threads for aggregate_atac_batch"
-    )
-    batch_aggr_mem_gb: int = Field(
-        default=64,
-        gt=0,
-        description="Memory (GB) for aggregate_atac_batch (loading all per-capture ATAC objects)"
-    )
-    batch_aggr_runtime_minutes: int = Field(
-        default=60,
-        gt=0,
-        description="Maximum runtime in minutes for aggregate_atac_batch"
-    )
+    anndata: AnndataConfig = Field(default_factory=AnndataConfig)
+    aggr: AggrConfig = Field(default_factory=AggrConfig)
+    batch_aggregation: BatchAggregationConfig = Field(default_factory=BatchAggregationConfig)
     directories: DirectoryConfig = Field(
         default_factory=lambda: DirectoryConfig(
             LOGS_DIR="00_LOGS",
@@ -234,16 +225,9 @@ class CellRangerARCConfig(BaseStepConfig):
         default="none",
         description="Normalization method for aggregation"
     )
-    anndata_threads: int = Field(
-        default=1,
-        ge=1,
-        description="CPU threads for create_arc_mudata"
-    )
-    anndata_mem_gb: int = Field(
-        default=16,
-        gt=0,
-        description="Memory (GB) for create_arc_mudata"
-    )
+    anndata: AnndataConfig = Field(default_factory=AnndataConfig)
+    aggr: AggrConfig = Field(default_factory=AggrConfig)
+    batch_aggregation: BatchAggregationConfig = Field(default_factory=BatchAggregationConfig)
     directories: DirectoryConfig = Field(
         default_factory=lambda: DirectoryConfig(
             LOGS_DIR="00_LOGS",
@@ -277,3 +261,50 @@ class CellRangerARCConfig(BaseStepConfig):
         """ARC-specific directories."""
         CELLRANGERARC_COUNT_DIR: str = Field(default="01_CELLRANGERARC_COUNT")
         CELLRANGERARC_AGGR_DIR: str = Field(default="02_CELLRANGERARC_AGGR")
+
+
+class CellRangerMultiConfig(BaseStepConfig):
+    """Cell Ranger multi configuration (5' immune profiling: GEX + VDJ + Feature Barcoding, and Flex).
+
+    References and probe sets are declared inside each capture's multi config CSV,
+    not as CLI arguments. This means all library types (GEX, VDJ-T, VDJ-B, Antibody Capture,
+    CRISPR, Flex probe set) are configured per-capture in the CSV.
+    """
+
+    tool_meta: ClassVar[ToolMeta] = ToolMeta(
+        package="cellranger",
+        url="https://www.10xgenomics.com/support/software/cell-ranger/latest",
+        shell_version_cmd="cellranger --version",
+    )
+
+    libraries: str = Field(
+        description="Path to libraries TSV file with columns: batch, capture, CSV (per-capture multi config CSV path)"
+    )
+    threads: int = Field(
+        default=10,
+        ge=1,
+        description="CPU threads for cellranger multi"
+    )
+    mem_gb: int = Field(
+        default=64,
+        gt=0,
+        description="Memory (GB) for cellranger multi"
+    )
+    runtime_minutes: int = Field(
+        default=720,
+        gt=0,
+        description="Maximum runtime in minutes for the SLURM job"
+    )
+    cluster_mode: Optional[ClusterModeConfig] = Field(
+        default=None,
+        alias="cluster-mode",
+        description="Cell Ranger cluster mode — see https://www.10xgenomics.com/support/software/cell-ranger/latest/advanced/cr-cluster-mode"
+    )
+    anndata: AnndataConfig = Field(default_factory=AnndataConfig)
+    aggr: AggrConfig = Field(default_factory=AggrConfig)
+    batch_aggregation: BatchAggregationConfig = Field(default_factory=BatchAggregationConfig)
+
+    class DirectoryConfig(DirectoryConfig):
+        """Multi-specific directories."""
+        CELLRANGERMULTI_COUNT_DIR: str = Field(default="01_CELLRANGERMULTI_COUNT")
+        CELLRANGERMULTI_AGGR_DIR: str = Field(default="02_CELLRANGERMULTI_AGGR")
