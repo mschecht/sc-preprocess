@@ -69,7 +69,7 @@ echo -e "1\tL001\tatac_pbmc_1k_nextgem\t$(realpath atac_pbmc_1k_nextgem_fastqs)"
 
 Fill in any other required paths (e.g. path to `libaries.tsv` which points to your input fasta files), parameters, as well as enabled/disable and steps so the workflow fits your single-cell preprocessing needs. Today, we will be running `cellranger-atac count` to map the single-cell RNAseq data and `Scrublet` to identify doublets.
 
-For this case study, `pipeline_config.yaml` should look like this: 
+For this case study, fill out the `pipeline_config.yaml` with these value and adjust paths to file where necessary:
 
 ```yaml
 project_name: 1K_PBMC_ATAC_PROCESSED  # REQUIRED
@@ -96,11 +96,11 @@ cellranger_atac:
     mempercore: null     # SLURM users: leave null — memory is requested directly via --mem=__MRO_MEM_GB__G
     maxjobs: 64          # max concurrent cluster subjobs
     jobinterval: null    # delay between submissions in ms; increase if cluster rate-limits
-  # cellranger_atac_aggr
+  # cellranger_atac_aggr — runtime scales with number of captures; 4+ captures can take 5–7h
   aggr:
-    threads: 16
+    threads: 32
     mem_gb: 64
-    runtime_minutes: 240
+    runtime_minutes: 480
   # create_atac_anndata (includes fragment sort — can take 10–30 min on real data)
   anndata:
     threads: 16
@@ -335,11 +335,11 @@ cellranger_atac:
     mempercore: null     # SLURM users: leave null — memory is requested directly via --mem=__MRO_MEM_GB__G
     maxjobs: 64          # max concurrent cluster subjobs
     jobinterval: null    # delay between submissions in ms; increase if cluster rate-limits
-  # cellranger_atac_aggr
+  # cellranger_atac_aggr — runtime scales with number of captures; 4+ captures can take 5–7h
   aggr:
-    threads: 16
+    threads: 32
     mem_gb: 64
-    runtime_minutes: 240
+    runtime_minutes: 480
   # create_atac_anndata (includes fragment sort — can take 10–30 min on real data)
   anndata:
     threads: 16
@@ -396,11 +396,11 @@ cellranger_atac:
     mempercore: null     # SLURM users: leave null — memory is requested directly via --mem=__MRO_MEM_GB__G
     maxjobs: 64          # max concurrent cluster subjobs
     jobinterval: null    # delay between submissions in ms; increase if cluster rate-limits
-  # cellranger_atac_aggr
+  # cellranger_atac_aggr — runtime scales with number of captures; 4+ captures can take 5–7h
   aggr:
-    threads: 16
+    threads: 32
     mem_gb: 64
-    runtime_minutes: 240
+    runtime_minutes: 480
   # create_atac_anndata (includes fragment sort — can take 10–30 min on real data)
   anndata:
     threads: 16
