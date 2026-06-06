@@ -361,7 +361,11 @@ Examples:
         if args.output is None:
             print(yaml_str, end="")
         else:
-            Path(args.output).write_text(yaml_str)
+            output_path = Path(args.output)
+            if output_path.exists():
+                custom_logger.error(f"Output file already exists: {args.output}. Remove it first or choose a different name.")
+                sys.exit(1)
+            output_path.write_text(yaml_str)
             custom_logger.info(f"Config written to {args.output}")
     
     elif args.subcommand == 'validate-config':
