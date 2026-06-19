@@ -89,7 +89,6 @@ if config.get("cellranger_multi"):
         (outs/per_sample_outs/). VDJ-T and VDJ-B directories are read if present.
         """
         input:
-            h5 = os.path.join(MULTI_COUNT_DIR, "{batch}_{capture}", "outs", "count", "filtered_feature_bc_matrix.h5"),
             count_done = os.path.join(LOGS_DIR, "{batch}_{capture}_multi_count.done")
         output:
             h5mu = os.path.join(ANNDATA_DIR, "{batch}_{capture}.h5mu"),

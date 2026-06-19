@@ -540,12 +540,13 @@ if config.get("cellranger_multi"):
     MULTI_COUNT_DIR = multi_cfg["count_dir"]
     MULTI_AGGR_DIR = multi_cfg["aggr_dir"]
 
-    # Parse libraries file (same format as ARC: batch, capture, CSV)
+    # Parse libraries file (batch, capture, CSV — multi config CSV is not tabular, skip content validation)
     multi_df = u.sanity_check_libraries_list_tsv(
         MULTI_LIBRARIES,
         expected_columns={"batch", "capture", "CSV"},
         path_column="CSV",
-        file_extension=".csv"
+        file_extension=".csv",
+        validate_csv_contents=False
     )
 
     multi_captures = multi_df["capture"].unique().tolist()
@@ -570,8 +571,6 @@ if config.get("cellranger_multi"):
         input:
             libraries_csv = lambda wc: multi_df[multi_df["capture"] == wc.capture]["CSV"].iloc[0]
         output:
-            h5 = os.path.join(MULTI_COUNT_DIR, "{batch}_{capture}", "outs", "count", "filtered_feature_bc_matrix.h5"),
-            summary = os.path.join(MULTI_COUNT_DIR, "{batch}_{capture}", "outs", "web_summary.html"),
             done = touch(os.path.join(MULTI_LOGS_DIR, "{batch}_{capture}_multi_count.done"))
         params:
             outdir      = MULTI_COUNT_DIR,
@@ -626,7 +625,7 @@ if config.get("cellranger_multi"):
         """Aggregate GEX outputs from multiple multi captures using cellranger aggr."""
         input:
             captures = lambda wc: expand(
-                os.path.join(MULTI_COUNT_DIR, "{batch}_{capture}", "outs", "count", "filtered_feature_bc_matrix.h5"),
+                os.path.join(MULTI_LOGS_DIR, "{batch}_{capture}_multi_count.done"),
                 batch=wc.batch,
                 capture=multi_batch_to_captures[wc.batch]
             )
@@ -654,8 +653,7 @@ if config.get("cellranger_multi"):
                     MULTI_COUNT_DIR,
                     f"{wildcards.batch}_{capture}",
                     "outs",
-                    "count",
-                    "molecule_info.h5"
+                    "raw_molecule_info.h5"
                 )
                 aggr_data.append({"sample_id": f"{wildcards.batch}_{capture}", "molecule_h5": molecule_h5})
 

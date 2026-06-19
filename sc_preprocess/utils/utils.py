@@ -44,7 +44,7 @@ def has_underscore(s: str) -> bool:
     return "_" in s
 
 
-def sanity_check_libraries_list_tsv(filepath, log_file=None, expected_columns=None, path_column="fastqs", file_extension=None):
+def sanity_check_libraries_list_tsv(filepath, log_file=None, expected_columns=None, path_column="fastqs", file_extension=None, validate_csv_contents=True):
     """
     Check the format of the libraries list TSV file.
     Args:
@@ -151,7 +151,7 @@ def sanity_check_libraries_list_tsv(filepath, log_file=None, expected_columns=No
             if not os.path.exists(file_path):
                 custom_logger.error(f"{error_location}: File does not exist: {file_path}")
                 valid = False
-            elif file_extension == ".csv":
+            elif file_extension == ".csv" and validate_csv_contents:
                 # For ARC per-capture CSVs: validate fastqs paths inside the CSV
                 try:
                     lib_csv = pd.read_csv(file_path)
