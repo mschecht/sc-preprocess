@@ -243,6 +243,11 @@ if config.get("cellranger_gex"):
             modality = "gex",
             demux_dir = DEMUX_DIR,
             doublet_dir = DOUBLET_DIR
+        threads: config["cellranger_gex"].get("enrichment", {}).get("threads", 4)
+        resources:
+            mem_mb = config["cellranger_gex"].get("enrichment", {}).get("mem_gb", 16) * 1024,
+            runtime = config["cellranger_gex"].get("enrichment", {}).get("runtime_minutes", 60),
+            tmpdir = RESOURCES.get("tmpdir") or gettempdir()
         log:
             os.path.join(LOGS_DIR, "{batch}_gex_enrichment.log")
         script:
@@ -265,6 +270,11 @@ if config.get("cellranger_atac"):
             modality = "atac",
             demux_dir = DEMUX_DIR,
             doublet_dir = DOUBLET_DIR
+        threads: config["cellranger_atac"].get("enrichment", {}).get("threads", 4)
+        resources:
+            mem_mb = config["cellranger_atac"].get("enrichment", {}).get("mem_gb", 16) * 1024,
+            runtime = config["cellranger_atac"].get("enrichment", {}).get("runtime_minutes", 60),
+            tmpdir = RESOURCES.get("tmpdir") or gettempdir()
         log:
             os.path.join(LOGS_DIR, "{batch}_atac_enrichment.log")
         script:
@@ -287,6 +297,11 @@ if config.get("cellranger_arc"):
             modality = "arc",
             demux_dir = DEMUX_DIR,
             doublet_dir = DOUBLET_DIR
+        threads: config["cellranger_arc"].get("enrichment", {}).get("threads", 4)
+        resources:
+            mem_mb = config["cellranger_arc"].get("enrichment", {}).get("mem_gb", 16) * 1024,
+            runtime = config["cellranger_arc"].get("enrichment", {}).get("runtime_minutes", 60),
+            tmpdir = RESOURCES.get("tmpdir") or gettempdir()
         log:
             os.path.join(LOGS_DIR, "{batch}_arc_enrichment.log")
         script:
@@ -309,6 +324,11 @@ if config.get("cellranger_multi"):
             modality = "multi",
             demux_dir = DEMUX_DIR,
             doublet_dir = DOUBLET_DIR
+        threads: config["cellranger_multi"].get("enrichment", {}).get("threads", 4)
+        resources:
+            mem_mb = config["cellranger_multi"].get("enrichment", {}).get("mem_gb", 16) * 1024,
+            runtime = config["cellranger_multi"].get("enrichment", {}).get("runtime_minutes", 60),
+            tmpdir = RESOURCES.get("tmpdir") or gettempdir()
         log:
             os.path.join(LOGS_DIR, "{batch}_multi_enrichment.log")
         script:

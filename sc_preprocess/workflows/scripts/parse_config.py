@@ -17,7 +17,7 @@ def get_enabled_steps(config):
     steps = []
     
     # Check each step
-    for step in ["cellranger_gex", "cellranger_atac", "cellranger_arc", 
+    for step in ["cellranger_gex", "cellranger_atac", "cellranger_arc", "cellranger_multi",
                  "demultiplexing", "doublet_detection", "celltype_annotation"]:
         if config.get(step) and config[step].get("enabled", True):
             steps.append(step)

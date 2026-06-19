@@ -246,7 +246,7 @@ directories_suffix: none  # suffix appended to output directory names; "none" to
 
 cellranger_multi:
   enabled: true
-  libraries: /path/to/libraries.tsv  # REQUIRED: TSV with columns: batch, capture, CSV
+  libraries: /path/to/libraries_list.tsv  # REQUIRED: TSV with columns: batch, capture, CSV
   # No reference field — declare reference(s) inside each capture's multi config CSV.
   # The multi config CSV also specifies: probe-set (Flex), [vdj] reference, [feature] reference.
   # See: https://www.10xgenomics.com/support/software/cell-ranger/latest/analysis/running-pipelines/cr-5p-multi

@@ -3,7 +3,7 @@
 from typing import Optional, Dict, Any
 from pydantic import BaseModel, Field, field_validator, model_validator
 from .base import ResourceConfig
-from .cellranger import CellRangerGEXConfig, CellRangerATACConfig, CellRangerARCConfig
+from .cellranger import CellRangerGEXConfig, CellRangerATACConfig, CellRangerARCConfig, CellRangerMultiConfig
 from .demultiplexing import DemultiplexingConfig
 from .doublet_detection import DoubletDetectionConfig
 
@@ -63,6 +63,10 @@ class PipelineConfig(BaseModel):
         default=None,
         description="Cell Ranger ARC configuration"
     )
+    cellranger_multi: Optional[CellRangerMultiConfig] = Field(
+        default=None,
+        description="Cell Ranger multi configuration (5' immune profiling / Flex)"
+    )
     demultiplexing: Optional[DemultiplexingConfig] = Field(
         default=None,
         description="Demultiplexing configuration"
@@ -94,7 +98,9 @@ class PipelineConfig(BaseModel):
             enabled_cr.append("cellranger_atac")
         if self.cellranger_arc and self.cellranger_arc.enabled:
             enabled_cr.append("cellranger_arc")
-        
+        if self.cellranger_multi and self.cellranger_multi.enabled:
+            enabled_cr.append("cellranger_multi")
+
         if len(enabled_cr) > 1:
             raise ValueError(
                 f"Only one Cell Ranger workflow can be enabled at a time. "
@@ -111,6 +117,7 @@ class PipelineConfig(BaseModel):
             "cellranger_gex": self.cellranger_gex,
             "cellranger_atac": self.cellranger_atac,
             "cellranger_arc": self.cellranger_arc,
+            "cellranger_multi": self.cellranger_multi,
             "demultiplexing": self.demultiplexing,
             "doublet_detection": self.doublet_detection,
         }

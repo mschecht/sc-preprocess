@@ -35,6 +35,16 @@ class BatchAggregationConfig(BaseModel):
         extra = "forbid"
 
 
+class EnrichmentConfig(BaseModel):
+    """Resources for the enrich_{modality}_metadata rule."""
+    threads: int = Field(default=4, ge=1, description="CPU threads")
+    mem_gb: int = Field(default=16, gt=0, description="Memory (GB)")
+    runtime_minutes: int = Field(default=60, gt=0, description="Wall-clock limit (minutes)")
+
+    class Config:
+        extra = "forbid"
+
+
 class ClusterModeConfig(BaseModel):
     """Cell Ranger cluster mode — submits compute jobs via a cluster scheduler."""
 
@@ -130,6 +140,7 @@ class CellRangerGEXConfig(BaseStepConfig):
     anndata: AnndataConfig = Field(default_factory=AnndataConfig)
     aggr: AggrConfig = Field(default_factory=AggrConfig)
     batch_aggregation: BatchAggregationConfig = Field(default_factory=BatchAggregationConfig)
+    enrichment: EnrichmentConfig = Field(default_factory=EnrichmentConfig)
     directories: DirectoryConfig = Field(
         default_factory=lambda: DirectoryConfig(
             LOGS_DIR="00_LOGS",
@@ -192,6 +203,7 @@ class CellRangerATACConfig(BaseStepConfig):
     anndata: AnndataConfig = Field(default_factory=AnndataConfig)
     aggr: AggrConfig = Field(default_factory=AggrConfig)
     batch_aggregation: BatchAggregationConfig = Field(default_factory=BatchAggregationConfig)
+    enrichment: EnrichmentConfig = Field(default_factory=EnrichmentConfig)
     directories: DirectoryConfig = Field(
         default_factory=lambda: DirectoryConfig(
             LOGS_DIR="00_LOGS",
@@ -228,6 +240,7 @@ class CellRangerARCConfig(BaseStepConfig):
     anndata: AnndataConfig = Field(default_factory=AnndataConfig)
     aggr: AggrConfig = Field(default_factory=AggrConfig)
     batch_aggregation: BatchAggregationConfig = Field(default_factory=BatchAggregationConfig)
+    enrichment: EnrichmentConfig = Field(default_factory=EnrichmentConfig)
     directories: DirectoryConfig = Field(
         default_factory=lambda: DirectoryConfig(
             LOGS_DIR="00_LOGS",
@@ -303,6 +316,7 @@ class CellRangerMultiConfig(BaseStepConfig):
     anndata: AnndataConfig = Field(default_factory=AnndataConfig)
     aggr: AggrConfig = Field(default_factory=AggrConfig)
     batch_aggregation: BatchAggregationConfig = Field(default_factory=BatchAggregationConfig)
+    enrichment: EnrichmentConfig = Field(default_factory=EnrichmentConfig)
 
     class DirectoryConfig(DirectoryConfig):
         """Multi-specific directories."""

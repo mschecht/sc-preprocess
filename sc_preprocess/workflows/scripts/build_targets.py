@@ -33,13 +33,17 @@ def build_all_targets(config, enabled_steps):
         targets.extend(get_cellranger_atac_outputs(config))
     if "cellranger_arc" in enabled_steps:
         targets.extend(get_cellranger_arc_outputs(config))
+    if "cellranger_multi" in enabled_steps:
+        targets.extend(get_cellranger_multi_outputs(config))
+
+    _cr_steps = ["cellranger_gex", "cellranger_atac", "cellranger_arc", "cellranger_multi"]
 
     # Phase 1: Object creation outputs (after cellranger)
-    if any(step in enabled_steps for step in ["cellranger_gex", "cellranger_atac", "cellranger_arc"]):
+    if any(step in enabled_steps for step in _cr_steps):
         targets.extend(get_object_creation_outputs(config))
 
     # Phase 5: Batch aggregation outputs (merge per-capture objects)
-    if any(step in enabled_steps for step in ["cellranger_gex", "cellranger_atac", "cellranger_arc"]):
+    if any(step in enabled_steps for step in _cr_steps):
         targets.extend(get_batch_aggregation_outputs(config))
 
     # Demux outputs
@@ -51,7 +55,7 @@ def build_all_targets(config, enabled_steps):
         targets.extend(get_doublet_outputs(config))
 
     # Final enriched objects (merge all metadata into batch objects)
-    if any(step in enabled_steps for step in ["cellranger_gex", "cellranger_atac", "cellranger_arc"]):
+    if any(step in enabled_steps for step in _cr_steps):
         targets.extend(get_enriched_object_outputs(config))
 
     return targets
@@ -164,6 +168,21 @@ def get_cellranger_arc_outputs(config):
     return outputs
 
 
+def get_cellranger_multi_outputs(config):
+    """Get multi output file paths (per-batch aggr done files)."""
+    if not config.get("cellranger_multi"):
+        return []
+
+    output_dirs = parse_output_directories(config)
+    logs_dir = output_dirs["logs_dir"]
+    multi_config = config["cellranger_multi"]
+
+    df = pd.read_csv(multi_config["libraries"], sep="\t")
+    batches = df['batch'].unique().tolist()
+
+    return [os.path.join(logs_dir, f"{batch}_multi_aggr.done") for batch in batches]
+
+
 def get_object_creation_outputs(config):
     """
     Get AnnData/MuData object creation output file paths.
@@ -202,6 +221,14 @@ def get_object_creation_outputs(config):
             batch = row['batch']
             capture = row['capture']
             outputs.append(os.path.join(logs_dir, f"{batch}_{capture}_arc_mudata.done"))
+
+    # Multi MuData creation (per-capture)
+    if config.get("cellranger_multi"):
+        df = pd.read_csv(config["cellranger_multi"]["libraries"], sep="\t")
+        for _, row in df.iterrows():
+            batch = row['batch']
+            capture = row['capture']
+            outputs.append(os.path.join(logs_dir, f"{batch}_{capture}_multi_mudata.done"))
 
     return outputs
 
@@ -242,6 +269,13 @@ def get_batch_aggregation_outputs(config):
         for batch in batches:
             outputs.append(os.path.join(logs_dir, f"{batch}_arc_batch_aggregation.done"))
 
+    # Multi batch aggregation
+    if config.get("cellranger_multi"):
+        df = pd.read_csv(config["cellranger_multi"]["libraries"], sep="\t")
+        batches = df['batch'].unique().tolist()
+        for batch in batches:
+            outputs.append(os.path.join(logs_dir, f"{batch}_multi_batch_aggregation.done"))
+
     return outputs
 
 
@@ -281,6 +315,13 @@ def get_enriched_object_outputs(config):
         for batch in batches:
             outputs.append(os.path.join(logs_dir, f"{batch}_arc_enrichment.done"))
 
+    # Multi enriched objects
+    if config.get("cellranger_multi"):
+        df = pd.read_csv(config["cellranger_multi"]["libraries"], sep="\t")
+        batches = df['batch'].unique().tolist()
+        for batch in batches:
+            outputs.append(os.path.join(logs_dir, f"{batch}_multi_enrichment.done"))
+
     return outputs
 
 
@@ -312,6 +353,8 @@ def get_demux_outputs(config):
         libraries_path = config["cellranger_atac"]["libraries"]
     elif config.get("cellranger_arc"):
         libraries_path = config["cellranger_arc"]["libraries"]
+    elif config.get("cellranger_multi"):
+        libraries_path = config["cellranger_multi"]["libraries"]
 
     if libraries_path:
         df = pd.read_csv(libraries_path, sep="\t")
@@ -359,6 +402,8 @@ def get_doublet_outputs(config):
         libraries_path = config["cellranger_atac"]["libraries"]
     elif config.get("cellranger_arc"):
         libraries_path = config["cellranger_arc"]["libraries"]
+    elif config.get("cellranger_multi"):
+        libraries_path = config["cellranger_multi"]["libraries"]
 
     if libraries_path:
         df = pd.read_csv(libraries_path, sep="\t")

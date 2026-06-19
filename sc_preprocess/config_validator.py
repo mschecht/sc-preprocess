@@ -9,7 +9,7 @@ from pydantic import ValidationError
 
 from sc_preprocess.schemas.config import PipelineConfig
 from sc_preprocess.schemas.cellranger import (
-    CellRangerGEXConfig, CellRangerATACConfig, CellRangerARCConfig
+    CellRangerGEXConfig, CellRangerATACConfig, CellRangerARCConfig, CellRangerMultiConfig
 )
 from sc_preprocess.schemas.demultiplexing import (
     DemuxalotConfig, VireoConfig
@@ -26,6 +26,8 @@ PIPELINE_DIRECTORIES = [
     ("cellrangeratac_aggr", "02_CELLRANGERATAC_AGGR"),
     ("cellrangerarc_count", "01_CELLRANGERARC_COUNT"),
     ("cellrangerarc_aggr", "02_CELLRANGERARC_AGGR"),
+    ("cellrangermulti_count", "01_CELLRANGERMULTI_COUNT"),
+    ("cellrangermulti_aggr", "02_CELLRANGERMULTI_AGGR"),
     ("anndata", "03_ANNDATA"),  # Phase 1: Per-capture AnnData/MuData objects
     ("batch_objects", "04_BATCH_OBJECTS"),  # Phase 5: Batch-level aggregated objects
     ("demultiplexing", "05_DEMULTIPLEXING"),  # Renumbered
@@ -77,17 +79,24 @@ def parse_cellranger_config(config: Dict[str, Any], modality_key: str, output_di
     elif "arc" in modality_key:
         count_key = "cellrangerarc_count_dir"
         aggr_key = "cellrangerarc_aggr_dir"
-    
+    elif "multi" in modality_key:
+        count_key = "cellrangermulti_count_dir"
+        aggr_key = "cellrangermulti_aggr_dir"
+
+    is_multi = "multi" in modality_key
+
     parsed = {
-        "reference": mod_config["reference"],
         "libraries": mod_config["libraries"],
-        "normalize": mod_config.get("normalize", "none"),
         "create_bam": mod_config.get("create-bam", False),
         "logs_dir": output_dirs["logs_dir"],
         "count_dir": output_dirs[count_key],
         "aggr_dir": output_dirs[aggr_key],
     }
-    
+
+    if not is_multi:
+        parsed["reference"] = mod_config["reference"]
+        parsed["normalize"] = mod_config.get("normalize", "none")
+
     if has_chemistry:
         parsed["chemistry"] = mod_config.get("chemistry", "auto")
     
@@ -103,6 +112,7 @@ class ConfigValidator:
             "gex": CellRangerGEXConfig,
             "atac": CellRangerATACConfig,
             "arc": CellRangerARCConfig,
+            "multi": CellRangerMultiConfig,
         },
         "demultiplexing": {
             "demuxalot": DemuxalotConfig,
@@ -209,6 +219,10 @@ class ConfigValidator:
         if config.cellranger_arc and config.cellranger_arc.enabled:
             _check(config.cellranger_arc.reference, "cellranger_arc.reference")
             _check(config.cellranger_arc.libraries, "cellranger_arc.libraries")
+
+        # Cell Ranger multi
+        if config.cellranger_multi and config.cellranger_multi.enabled:
+            _check(config.cellranger_multi.libraries, "cellranger_multi.libraries")
 
         # Demultiplexing
         if config.demultiplexing and config.demultiplexing.enabled:

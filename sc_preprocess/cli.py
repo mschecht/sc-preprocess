@@ -32,6 +32,9 @@ Examples:
   # Write config directly to a file
   sc-preprocess init-config --modality gex --output pipeline_config.yaml
 
+  # Generate config for a multi pipeline (5' immune profiling / Flex)
+  sc-preprocess init-config --modality multi --output pipeline_multi_config.yaml
+
   # Quick config validation (optional - 'run' auto-validates)
   sc-preprocess validate-config --config-file pipeline_config.yaml
 
@@ -149,8 +152,8 @@ Examples:
     init_parser.add_argument(
         '--modality',
         required=True,
-        choices=['gex', 'atac', 'arc'],
-        help='Pipeline modality: gex (Gene Expression), atac (Chromatin Accessibility), arc (Multiome)'
+        choices=['gex', 'atac', 'arc', 'multi'],
+        help='Pipeline modality: gex (Gene Expression), atac (Chromatin Accessibility), arc (Multiome), multi (5\' immune profiling / Flex)'
     )
     init_parser.add_argument(
         '--output',

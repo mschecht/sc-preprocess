@@ -42,7 +42,7 @@ if not ENABLED_STEPS:
     )
 
 # Conditionally include rule modules based on enabled steps
-if any(step in ENABLED_STEPS for step in ["cellranger_gex", "cellranger_atac", "cellranger_arc"]):
+if any(step in ENABLED_STEPS for step in ["cellranger_gex", "cellranger_atac", "cellranger_arc", "cellranger_multi"]):
     include: "rules/cellranger.smk"
     # Phase 1: Include object creation rules after cellranger
     include: "rules/object_creation.smk"

@@ -20,7 +20,7 @@ sys.stderr = sys.stdout
 try:
     print(f"Aggregating batch {batch_id} for {modality.upper()} modality")
 
-    if modality == "arc":
+    if modality in ["arc", "multi"]:
         input_files = snakemake.input.h5mus
         print(f"Found {len(input_files)} per-capture MuData files to aggregate:")
     else:
@@ -36,7 +36,7 @@ try:
     for i, file_path in enumerate(input_files):
         print(f"  [{i+1}/{len(input_files)}] Reading: {os.path.basename(file_path)}")
 
-        if modality == "arc":
+        if modality in ["arc", "multi"]:
             obj = mu.read(file_path)
         else:
             obj = sc.read_h5ad(file_path)
@@ -47,11 +47,11 @@ try:
     # Concatenate objects
     print(f"\nConcatenating {len(objects)} objects...")
 
-    if modality == "arc":
-        mod_names = list(objects[0].mod.keys())
+    if modality in ["arc", "multi"]:
+        mod_names = list(dict.fromkeys(k for obj in objects for k in obj.mod.keys()))
         merged_mods = {}
         for mod_name in mod_names:
-            mod_list = [obj.mod[mod_name] for obj in objects]
+            mod_list = [obj.mod[mod_name] for obj in objects if mod_name in obj.mod]
             merged_mods[mod_name] = ad.concat(mod_list, axis=0, join='outer', merge='same')
         batch_obj = mu.MuData(merged_mods)
         batch_obj.update()
@@ -66,7 +66,7 @@ try:
     print(f"✓ Concatenated to {batch_obj.n_obs} cells total")
 
     # Verify cell_id uniqueness
-    if modality == "arc":
+    if modality in ["arc", "multi"]:
         # For MuData, check each modality and top-level obs
         for mod_name, mod_data in batch_obj.mod.items():
             if not mod_data.obs['cell_id'].is_unique:
@@ -86,14 +86,14 @@ try:
     print(f"{'='*60}")
     print(f"Total cells: {batch_obj.n_obs}")
 
-    if modality == "arc":
+    if modality in ["arc", "multi"]:
         print(f"Modalities: {list(batch_obj.mod.keys())}")
         for mod_name, mod_data in batch_obj.mod.items():
             print(f"  {mod_name}: {mod_data.n_obs} cells x {mod_data.n_vars} features")
     else:
         print(f"Features: {batch_obj.n_vars}")
 
-    if modality == "arc":
+    if modality in ["arc", "multi"]:
         # For MuData, metadata lives in modality-level obs
         first_mod = list(batch_obj.mod.values())[0]
         print(f"Metadata columns (per-modality): {first_mod.obs.columns.tolist()}")
@@ -109,7 +109,7 @@ try:
     # Write batch object
     print(f"\nWriting batch-level object to: {output_file}")
 
-    if modality == "arc":
+    if modality in ["arc", "multi"]:
         batch_obj.write(output_file)
     else:
         batch_obj.write_h5ad(output_file)

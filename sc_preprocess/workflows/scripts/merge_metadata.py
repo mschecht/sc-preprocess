@@ -85,7 +85,7 @@ try:
 
     # Read batch object
     print(f"Reading batch object: {input_object}")
-    if modality == "arc":
+    if modality in ["arc", "multi"]:
         import muon as mu
         adata = mu.read(input_object)
         is_mudata = True
@@ -177,6 +177,8 @@ try:
 
     if is_mudata:
         for mod_name, mod_data in adata.mod.items():
+            if 'total_counts' not in mod_data.obs.columns or 'n_genes_by_counts' not in mod_data.obs.columns:
+                continue
             is_gex = mod_name in ('rna', 'gex')
             agg_dict = {
                 'n_cells': ('total_counts', 'count'),
