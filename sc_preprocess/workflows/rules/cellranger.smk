@@ -538,8 +538,6 @@ if config.get("cellranger_multi"):
     MULTI_LIBRARIES = multi_cfg["libraries"]
     MULTI_LOGS_DIR = multi_cfg["logs_dir"]
     MULTI_COUNT_DIR = multi_cfg["count_dir"]
-    MULTI_AGGR_DIR = multi_cfg["aggr_dir"]
-
     # Parse libraries file (batch, capture, CSV — multi config CSV is not tabular, skip content validation)
     multi_df = u.sanity_check_libraries_list_tsv(
         MULTI_LIBRARIES,
@@ -620,58 +618,3 @@ if config.get("cellranger_multi"):
                     shutil.rmtree(final_path)
                 shutil.move(output_id, final_path)
 
-
-    rule cellranger_multi_aggr:
-        """Aggregate GEX outputs from multiple multi captures using cellranger aggr."""
-        input:
-            captures = lambda wc: expand(
-                os.path.join(MULTI_LOGS_DIR, "{batch}_{capture}_multi_count.done"),
-                batch=wc.batch,
-                capture=multi_batch_to_captures[wc.batch]
-            )
-        output:
-            done = touch(os.path.join(MULTI_LOGS_DIR, "{batch}_multi_aggr.done")),
-            csv = os.path.join(MULTI_AGGR_DIR, "{batch}_aggregation.csv")
-        params:
-            outdir = MULTI_AGGR_DIR
-        threads: config["cellranger_multi"].get("aggr", {}).get("threads", 16)
-        resources:
-            mem_mb = config["cellranger_multi"].get("aggr", {}).get("mem_gb", 64) * 1024,
-            runtime = config["cellranger_multi"].get("aggr", {}).get("runtime_minutes", 240),
-            tmpdir = RESOURCES.get("tmpdir") or gettempdir()
-        log:
-            os.path.join(MULTI_LOGS_DIR, "{batch}_multi_aggr.log")
-        run:
-            lock_file = os.path.join(wildcards.batch, "_lock")
-            if os.path.exists(lock_file):
-                os.remove(lock_file)
-
-            captures = multi_batch_to_captures[wildcards.batch]
-            aggr_data = []
-            for capture in captures:
-                molecule_h5 = os.path.join(
-                    MULTI_COUNT_DIR,
-                    f"{wildcards.batch}_{capture}",
-                    "outs",
-                    "raw_molecule_info.h5"
-                )
-                aggr_data.append({"sample_id": f"{wildcards.batch}_{capture}", "molecule_h5": molecule_h5})
-
-            pd.DataFrame(aggr_data).to_csv(output.csv, index=False)
-
-            if len(captures) > 1:
-                shell(
-                    f"""
-                    cellranger aggr \\
-                        --id={wildcards.batch} \\
-                        --csv={output.csv} \\
-                        2>&1 > {log}
-                    """
-                )
-                if os.path.exists(wildcards.batch):
-                    final_path = os.path.join(params.outdir, wildcards.batch)
-                    if os.path.exists(final_path):
-                        shutil.rmtree(final_path)
-                    shutil.move(wildcards.batch, final_path)
-            else:
-                u.custom_logger.info(f"Batch {wildcards.batch} has only one capture ({captures[0]}). Skipping cellranger aggr step.")

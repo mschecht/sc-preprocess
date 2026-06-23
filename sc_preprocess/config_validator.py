@@ -27,7 +27,6 @@ PIPELINE_DIRECTORIES = [
     ("cellrangerarc_count", "01_CELLRANGERARC_COUNT"),
     ("cellrangerarc_aggr", "02_CELLRANGERARC_AGGR"),
     ("cellrangermulti_count", "01_CELLRANGERMULTI_COUNT"),
-    ("cellrangermulti_aggr", "02_CELLRANGERMULTI_AGGR"),
     ("anndata", "03_ANNDATA"),  # Phase 1: Per-capture AnnData/MuData objects
     ("batch_objects", "04_BATCH_OBJECTS"),  # Phase 5: Batch-level aggregated objects
     ("demultiplexing", "05_DEMULTIPLEXING"),  # Renumbered
@@ -81,7 +80,6 @@ def parse_cellranger_config(config: Dict[str, Any], modality_key: str, output_di
         aggr_key = "cellrangerarc_aggr_dir"
     elif "multi" in modality_key:
         count_key = "cellrangermulti_count_dir"
-        aggr_key = "cellrangermulti_aggr_dir"
 
     is_multi = "multi" in modality_key
 
@@ -90,8 +88,9 @@ def parse_cellranger_config(config: Dict[str, Any], modality_key: str, output_di
         "create_bam": mod_config.get("create-bam", False),
         "logs_dir": output_dirs["logs_dir"],
         "count_dir": output_dirs[count_key],
-        "aggr_dir": output_dirs[aggr_key],
     }
+    if not is_multi:
+        parsed["aggr_dir"] = output_dirs[aggr_key]
 
     if not is_multi:
         parsed["reference"] = mod_config["reference"]

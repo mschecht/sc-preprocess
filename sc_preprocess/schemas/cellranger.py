@@ -314,11 +314,9 @@ class CellRangerMultiConfig(BaseStepConfig):
         description="Cell Ranger cluster mode — see https://www.10xgenomics.com/support/software/cell-ranger/latest/advanced/cr-cluster-mode"
     )
     anndata: AnndataConfig = Field(default_factory=AnndataConfig)
-    aggr: AggrConfig = Field(default_factory=AggrConfig)
     batch_aggregation: BatchAggregationConfig = Field(default_factory=BatchAggregationConfig)
     enrichment: EnrichmentConfig = Field(default_factory=EnrichmentConfig)
 
     class DirectoryConfig(DirectoryConfig):
         """Multi-specific directories."""
         CELLRANGERMULTI_COUNT_DIR: str = Field(default="01_CELLRANGERMULTI_COUNT")
-        CELLRANGERMULTI_AGGR_DIR: str = Field(default="02_CELLRANGERMULTI_AGGR")

@@ -169,7 +169,7 @@ def get_cellranger_arc_outputs(config):
 
 
 def get_cellranger_multi_outputs(config):
-    """Get multi output file paths (per-batch aggr done files)."""
+    """Get multi output file paths (per-capture mudata done files)."""
     if not config.get("cellranger_multi"):
         return []
 
@@ -178,9 +178,10 @@ def get_cellranger_multi_outputs(config):
     multi_config = config["cellranger_multi"]
 
     df = pd.read_csv(multi_config["libraries"], sep="\t")
-    batches = df['batch'].unique().tolist()
-
-    return [os.path.join(logs_dir, f"{batch}_multi_aggr.done") for batch in batches]
+    return [
+        os.path.join(logs_dir, f"{row['batch']}_{row['capture']}_multi_mudata.done")
+        for _, row in df.iterrows()
+    ]
 
 
 def get_object_creation_outputs(config):
