@@ -197,8 +197,6 @@ with open(log_path, "w") as log_fh:
 
     if airr_adata is not None:
         mdata.mod["airr"] = airr_adata
-        ir.pp.index_chains(mdata)
-        ir.tl.chain_qc(mdata)
         print(f"  Added airr modality ({airr_adata.n_obs} cells with receptor data)")
     else:
         print("  No VDJ data found — airr modality omitted")
@@ -226,6 +224,12 @@ with open(log_path, "w") as log_fh:
     mdata.obs["batch_id"] = mdata["gex"].obs["batch_id"]
     mdata.obs["capture_id"] = mdata["gex"].obs["capture_id"]
     mdata.obs["cell_id"] = mdata["gex"].obs["cell_id"]
+
+    # Index chains and run chain QC after mdata.update() so scirpy columns
+    # are written to mdata.obs last and not wiped by update().
+    if "airr" in mdata.mod:
+        ir.pp.index_chains(mdata)
+        ir.tl.chain_qc(mdata)
 
     assert mdata["gex"].obs["cell_id"].is_unique, "cell_id must be unique across all cells!"
 
