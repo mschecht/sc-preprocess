@@ -260,11 +260,6 @@ cellranger_multi:
     mempercore: null     # SLURM users: leave null — memory is requested directly via --mem=__MRO_MEM_GB__G
     maxjobs: 64          # max concurrent cluster subjobs
     jobinterval: null    # delay between submissions in ms; increase if cluster rate-limits
-  # cellranger_multi_aggr
-  aggr:
-    threads: 16
-    mem_gb: 64
-    runtime_minutes: 240
   # create_multi_mudata (VDJ + protein loading can be memory-intensive)
   anndata:
     threads: 16
