@@ -468,12 +468,12 @@ sc-preprocess run --config-file pipeline_config_multi.yaml --cores 1 --dag | dot
 :::
 
 
-> **Estimated runtime: ~20–30 minutes** #FIXME
+> **Estimated runtime: ~60–90 minutes**
 >
 > | Step | Time |
 > |------|------|
-> | `cellranger multi` (GEX alignment + VDJ-B assembly) | ~15–20 min |
-> | MuData object creation | ~2–3 min |
+> | `cellranger multi` (GEX alignment + VDJ-T + VDJ-B assembly + protein) | ~45–75 min |
+> | MuData object creation | ~5–10 min |
 > | Setup / conda environment overhead | ~5 min |
 
 ```bash
