@@ -32,6 +32,24 @@ To find available rule names, visualize the pipeline DAG:
 sc-preprocess run --config-file pipeline_config.yaml --cores 1 --dag | dot -Tpng > dag.png
 ```
 
+## `render-docs` fails with "address already in use"
+
+This happens when a previous `render-docs` process was not cleanly stopped and left a zombie sphinx-autobuild process holding the port.
+
+Check what is already running:
+
+```bash
+lsof -i :8000
+```
+
+Kill all lingering sphinx-autobuild processes:
+
+```bash
+pkill -f sphinx-autobuild
+```
+
+Then re-run `sc-preprocess render-docs`.
+
 ## What happens when a Cell Ranger cluster-mode job is killed?
 
 When `cluster-mode` is enabled with `jobmode: slurm` (or another scheduler), Cell Ranger's Martian runtime saves checkpoints after each completed stage. If the job is killed mid-run, Cell Ranger leaves a `_lock` file in the output directory. You can read more about Cell Ranger cluster mode [here](https://www.10xgenomics.com/support/software/cell-ranger/latest/advanced/cr-cluster-mode).
