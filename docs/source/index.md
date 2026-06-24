@@ -17,6 +17,7 @@ quickstart
 PBMC_1K_ATAC
 PBMC_GEX
 PBMC_3k_multiome
+CELLRANGER_MULTI
 faq
 development
 ```
