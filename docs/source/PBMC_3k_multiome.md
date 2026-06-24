@@ -180,7 +180,7 @@ sc-preprocess run --config-file pipeline_config.yaml --cores 1 --dag | dot -Tpng
 
 ### Rule descriptions
 
-Here we will break down the meaning of each rule so you can keep track of what's going on. If you want more detail please refer to the [Pipeline Rules Reference](pipeline_rules.md).
+Here we will break down the meaning of each rule so you can keep track of what's going on.
 
 * **cellranger_arc_count**: Runs the command [cellranger-arc count](https://www.10xgenomics.com/support/software/cell-ranger-arc/latest/analysis/running-pipelines/command-line-arguments#count) per capture, aligning GEX and ATAC reads to the reference genome and producing a joint feature-barcode matrix.
 * **create_arc_mudata**: Converts data from the Cell Ranger ARC output to per-capture [MuData object](https://mudata.readthedocs.io/stable/) (`.h5mu`) using the command [mu.read_10x_mtx()](https://muon.readthedocs.io/en/latest/api/generated/muon.read_10x_mtx.html), adding traceability metadata (`batch_id`, `capture_id`, `cell_id`).

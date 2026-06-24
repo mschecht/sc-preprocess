@@ -213,7 +213,7 @@ sc-preprocess run --config-file pipeline_config.yaml --cores 1 --dag | dot -Tpng
 
 ### Rule descriptions
 
-Here we will break down the meaning of each rule so you can keep track of what's going on. If you want more detail please refer to the [Pipeline Rules Reference](pipeline_rules.md).
+Here we will break down the meaning of each rule so you can keep track of what's going on.
 
 * **cellranger_atac_count**: Runs the command [cellranger-atac count](https://www.10xgenomics.com/support/software/cell-ranger-atac/latest/analysis/running-pipelines/command-line-arguments#count) per capture, aligning ATAC reads to the reference genome and producing a peak-barcode matrix.
 * **create_atac_anndata**: Converts Cell Ranger ATAC output to a per-capture [AnnData object](https://anndata.readthedocs.io/en/latest/) (`.h5ad`), adding traceability metadata (`batch_id`, `capture_id`, `cell_id`). Before importing fragments into SnapATAC2, the pipeline sorts `fragments.tsv.gz` by barcode and caches the result as `fragments.sorted_by_barcode.tsv.gz` next to the original file. **This sort is the most resource-intensive step in the pipeline**: on real data a fragments file is typically 2–5 GB and sorting it can take 10–30 minutes and require 16–32 GB of RAM. Use `anndata.mem_gb` and `anndata.runtime_minutes` in the config to size the job accordingly. The sorted file is cached — if you re-run the pipeline it will be reused automatically.

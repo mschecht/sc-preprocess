@@ -180,7 +180,7 @@ sc-preprocess run --config-file pipeline_config.yaml --cores 1 --dag | dot -Tpng
 
 ### Rule descriptions
 
-Here we will break down the meaning of each rule so you can keep track of what's going on. If you want more detail please refer to the [Pipeline Rules Reference](pipeline_rules.md).
+Here we will break down the meaning of each rule so you can keep track of what's going on. 
 
 * **cellranger_gex_count**: Runs the command [cellranger count](https://www.10xgenomics.com/support/software/cell-ranger/latest/analysis/running-pipelines/command-line-arguments#count) per capture, aligning GEX reads to the reference genome and producing a gene-barcode matrix.
 * **create_gex_anndata**: Converts data from the Cell Ranger GEX output to a per-capture [AnnData object](https://anndata.readthedocs.io/en/latest/) (`.h5ad`) using `sc.read_10x_h5()`, adding traceability metadata (`batch_id`, `capture_id`, `cell_id`).

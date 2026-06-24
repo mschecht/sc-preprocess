@@ -180,6 +180,16 @@ demultiplexing:
       gzip: true
 ```
 
+## Rule descriptions
+
+Here we will break down the meaning of each rule so you can keep track of what's going on.
+
+* **cellranger_multi_count**: Runs [cellranger multi](https://www.10xgenomics.com/support/software/cell-ranger/latest/analysis/running-pipelines/cr-5p-multi) per capture using the per-capture [multi config CSV](https://www.10xgenomics.com/support/software/cell-ranger/latest/analysis/inputs/cr-multi-config-csv-opts), producing per-sample gene-barcode matrices, VDJ assemblies, and antibody count matrices depending on which library types are declared.
+* **create_multi_mudata**: Converts Cell Ranger multi output into a per-capture [MuData object](https://mudata.readthedocs.io/stable/) (`.h5mu`), assembling `gex`, `prot` (if Antibody Capture present), and `airr` (if VDJ-T/VDJ-B present) modalities, and adding traceability metadata (`batch_id`, `capture_id`, `cell_id`) to all modalities.
+* **aggregate_multi_batch**: Merges all per-capture MuData objects within a batch into a single batch-level `.h5mu` file, concatenating each modality separately and verifying `cell_id` uniqueness across captures.
+* **run_scrublet**: Runs Scrublet doublet detection on the `gex` modality of each per-capture MuData object, adding doublet scores and predictions to cell metadata.
+* **enrich_multi_metadata**: Joins all downstream preprocessing metadata from demultiplexing and doublet detection into the batch-level MuData object and exports a flat per-cell metadata table (`.tsv.gz`).
+* **all**: Final Snakemake rule that collects all expected outputs to ensure the full workflow is completed.
 
 ---
 
