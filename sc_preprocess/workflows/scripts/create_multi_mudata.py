@@ -26,9 +26,6 @@ import scirpy as ir
 import scanpy as sc
 import anndata as ad
 
-# Suppress known, handled third-party warnings that clutter the log
-warnings.filterwarnings("ignore", message="Variable names are not unique", category=UserWarning)
-warnings.filterwarnings("ignore", message="var_names.*not unique", category=UserWarning)
 warnings.filterwarnings("ignore", category=FutureWarning, module="mudata")
 warnings.filterwarnings("ignore", message="Support for Awkward Arrays", category=Warning)
 mu.set_options(pull_on_update=False)  # adopt mudata 0.4 behaviour proactively
@@ -217,6 +214,10 @@ with open(log_path, "w") as log_fh:
                 f"{batch}_{capture}_{barcode}"
                 for barcode in adata.obs_names
             ]
+
+    # Set obs_names to cell_id so they are unique and meaningful across modalities
+    for mod_name, adata in mdata.mod.items():
+        adata.obs_names = adata.obs["cell_id"]
 
     mdata.update()
 

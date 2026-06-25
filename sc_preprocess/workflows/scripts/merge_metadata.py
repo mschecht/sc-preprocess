@@ -166,7 +166,7 @@ try:
         obs_df = pd.concat(obs_frames, axis=0)
     else:
         obs_df = adata.obs.copy()
-    obs_df.to_csv(obs_table_path, sep="\t", index=True, compression="gzip")
+    obs_df.to_csv(obs_table_path, sep="\t", index=False, compression="gzip")
 
     print("✓ Metadata enrichment complete!\n")
 
@@ -197,8 +197,8 @@ try:
         ).reset_index()
     else:
         summary_df = adata.obs.groupby('batch_id').agg(
-            n_cells=('total_counts', 'count'),
-            median_fragments=('total_counts', 'median'),
+            n_cells=('n_fragment', 'count'),
+            median_fragments=('n_fragment', 'median'),
             median_peaks=('n_genes_by_counts', 'median'),
         ).reset_index()
 
